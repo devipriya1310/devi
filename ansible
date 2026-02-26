@@ -1,0 +1,21 @@
+sudo dnf install ansible -y
+ansible --version
+sudo nano /etc/ansible/hosts
+[local]
+localhost ansible_connection=local  //Save and exit.(ctrl+o ,enter ,Ctrl+x)
+ansible all -m ping
+ansible all -m dnf -a "name=git state=present use_backend=dnf5" --become --ask-become-pass
+ansible all -m dnf -a "name=httpd state=present use_backend=dnf5" --become --ask-become-pass
+ansible all -m service -a "name=httpd state=started" --become --ask-become-pass
+nano start_httpd.yml
+---
+- name: Start Apache Service
+  hosts: local
+  become: yes
+  tasks:
+    - name: Ensure Apache is running
+      service:
+        name: httpd
+        state: started  ////Save and exit.(ctrl+o ,enter ,Ctrl+x)
+ansible-playbook start_httpd.yml --ask-become-pass
+systemctl status httpd
