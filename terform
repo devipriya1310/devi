@@ -1,0 +1,226 @@
+sudo dnf update -y
+STEP 2.3: Download AWS CLI installer
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+STEP 2.4: Install unzip (if not installed)
+sudo dnf install unzip -y
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
+🔹 STEP 3.1: Download Terraform
+curl -LO https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+🔹 STEP 3.2: Unzip Terraform
+sudo dnf install unzip -y   # Only if unzip not installed yet
+unzip terraform_1.6.0_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+
+🔹 STEP 3.4: Verify installation
+terraform version
+🔹 STEP 4.1: Set up AWS CLI credentials
+aws configure
+aws s3 ls
+🔹 STEP 5.1: Create a folder for Terraform project
+mkdir terraform-demo
+cd terraform-demo
+🔹 STEP 5.2: Create a simple Terraform config
+Create a file main.tf with:
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_s3_bucket" "demo_bucket" {
+  bucket = "my-terraform-demo-bucket-123456"
+  acl    = "private"
+}
+🔹 STEP 5.3: Initialize Terraform
+terraform init
+terraform plan
+terraform apply
+🔹 STEP 5.6: Clean up (optional)
+terraform destroy
+Step 2: Install AWS CLI
+1.	Open terminal: Ctrl + Alt + T
+2.	Update system:
+sudo dnf update -y
+3.	Download AWS CLI v2:
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+4.	Install unzip if needed:
+sudo dnf install unzip -y
+5.	Unzip and install AWS CLI:
+unzip awscliv2.zip
+sudo ./aws/install
+6.	Verify installation:
+aws --version
+
+Step 3: Configure AWS CLI
+aws configure
+Provide:
+AWS Access Key ID [None]: <your-access-key-id>
+AWS Secret Access Key [None]: <your-secret-access-key>
+Default region name [None]: ap-south-1   # or your desired region
+Default output format [None]: json       # or table if you prefer
+Test your credentials:
+aws s3 ls
+
+Step 4: Install Terraform
+1.	Download Terraform (latest version) from Terraform Downloads.
+2.	Unzip and move to /usr/local/bin:
+unzip terraform_1.6.0_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+3.	Verify installation:
+terraform version
+
+Step 5: Create Terraform Project
+cd ~
+mkdir terraform-project
+cd terraform-project
+•	This is your Terraform working directory.
+
+Step 6: Create Terraform Configuration
+1.	Create a file:
+nano main.tf
+2.	Example content for VPC + Subnet + Security Group + EC2 + Load Balancer:
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# VPC
+resource "aws_vpc" "demo_vpc" {
+  cidr_block = "10.0.0.0/16"
+  tags = { Name = "demo-vpc" }
+}
+
+# Subnet
+resource "aws_subnet" "demo_subnet" {
+  vpc_id            = aws_vpc.demo_vpc.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "ap-south-1a"
+  tags = { Name = "demo-subnet" }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "demo_igw" {
+  vpc_id = aws_vpc.demo_vpc.id
+  tags = { Name = "demo-igw" }
+}
+
+# Route Table
+resource "aws_route_table" "demo_route" {
+  vpc_id = aws_vpc.demo_vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.demo_igw.id
+  }
+  tags = { Name = "demo-route-table" }
+}
+
+resource "aws_route_table_association" "demo_assoc" {
+  subnet_id      = aws_subnet.demo_subnet.id
+  route_table_id = aws_route_table.demo_route.id
+}
+
+# Security Group
+resource "aws_security_group" "demo_sg" {
+  name        = "demo-sg"
+  description = "Allow SSH & HTTP"
+  vpc_id      = aws_vpc.demo_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EC2 Instance
+resource "aws_instance" "demo_ec2" {
+  ami           = "ami-0c02fb55956c7d316" # Amazon Linux 2
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.demo_subnet.id
+  security_groups = [aws_security_group.demo_sg.name]
+
+  tags = { Name = "demo-ec2" }
+}
+
+# Load Balancer
+resource "aws_lb" "demo_lb" {
+  name               = "demo-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.demo_sg.id]
+  subnets            = [aws_subnet.demo_subnet.id]
+}
+
+resource "aws_lb_target_group" "demo_tg" {
+  name     = "demo-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.demo_vpc.id
+}
+
+resource "aws_lb_listener" "demo_listener" {
+  load_balancer_arn = aws_lb.demo_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.demo_tg.arn
+  }
+}
+⚠️ Make sure no semicolons ; in blocks — Terraform uses newlines to separate arguments.
+
+Step 7: Initialize Terraform
+terraform init
+•	Downloads AWS provider plugin.
+•	Prepares working directory.
+
+Step 8: Terraform Plan (Safe Preview)
+terraform plan
+•	Shows what will be created/modified.
+•	✅ Nothing changes yet.
+
+Step 9: Terraform Apply (Safe)
+terraform apply
+•	Terraform will show the plan and ask:
+Do you want to perform these actions?
+  Only 'yes' will be accepted to approve.
+Enter a value:
+•	Type yes to apply.
+•	Resources are created without destroying anything else.
+
+Step 10: Verify Resources
+Check AWS console for:
+•	VPC
+•	Subnet
+•	Security Group
+•	EC2
+•	Load Balancer
+Or from CLI:
+aws ec2 describe-instances
+aws ec2 describe-vpcs
+aws ec2 describe-security-groups
+aws elbv2 describe-load-balancers
+
+Step 11: Clean up (Optional)
+terraform destroy
+•	Removes all resources created by this configuration.
+•	Only do this when you want to delete everything.
+
+
+
+
